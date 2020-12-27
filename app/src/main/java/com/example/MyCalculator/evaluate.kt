@@ -1,13 +1,5 @@
+
 package com.example.MyCalculator
-
-import androidx.appcompat.app.AppCompatActivity
-import android.os.Bundle
-import android.text.method.ScrollingMovementMethod
-import android.view.KeyEvent
-
-import android.view.View
-import android.widget.EditText
-import android.widget.TextView
 
 @Throws(Exception::class)
 fun precedence(op : String) : Int {
@@ -18,28 +10,52 @@ fun precedence(op : String) : Int {
         "*" -> return 2
         "/" -> return 2
         "%" -> return 2
+        "^" -> return 3
+        "log" -> return 3
+        "!" -> return 4
     }
     throw Exception("Invalid operator: $op")
 }
 
 @Throws(Exception::class)
-fun calculate(v1 : Double, op : String, v2 : Double) : Double {
+fun calculate_monadic(v1 : Double, op : String) : Double {
+
+    when (op) {
+        "!" -> return gammaLanczos(v1 + 1.0)
+    }
+
+    throw Exception("Invalid operator: $op")
+}
+
+@Throws(Exception::class)
+fun calculate_dyadic(v1 : Double, op : String, v2 : Double, reverse_order: Boolean) : Double {
+
+    if (reverse_order)
+        return calculate_dyadic(v2, op, v1, false)
+
     when (op) {
         "+" -> return v1 + v2
         "-" -> return v1 - v2
         "*" -> return v1 * v2
         "/" -> return v1 / v2
         "%" -> return v1 % v2
+        "log" -> return Math.log(v2) / Math.log(v1)
+        "^" -> return Math.pow(v1, v2)
     }
+
     throw Exception("Invalid operator: $op")
 }
 
+//**************************************************************
 data class Expr (
-    var has_operator : Boolean,
-    var operator : String,
-    var precedence : Int,
-    var residue : String,
-    val expression : String)
+    val expression : String,
+    var has_operator : Boolean = false,
+    var operator : String = "",
+    var precedence : Int = 0,
+    var op_is_monadic : Boolean = false,
+    var reverse_order : Boolean = false,
+    var residue : String = expression
+)
 
 fun throw_show_residue(expr : Expr, msg : String) : Nothing {
 
@@ -65,26 +81,43 @@ fun read_operator(expr : Expr) {
     if (expr.has_operator)
         return
 
-    if (expr.residue.isEmpty())
+    expr.has_operator = true
+    expr.reverse_order = false
+    expr.op_is_monadic = false
+
+    if (expr.residue.isEmpty()) {
+        expr.operator = "EOE"
         expr.precedence = -2
-
-    else {
-
-        val operatorsOneChar: String = "+-*/%)"
-
-        if (operatorsOneChar.indexOf(expr.residue[0]) >= 0) {
-            expr.operator = shift_expr(expr, 1)
-            expr.precedence = precedence(expr.operator)
-        } else
-            throw_show_residue(expr, "Expected operator")
+        return
     }
 
-    expr.has_operator = true
+    if (expr.residue[0] == '\'') {
+        expr.reverse_order = true
+        shift_expr(expr, 1)
+        if (expr.residue.isEmpty())
+            throw_show_residue(expr, "Syntax")
+    }
+
+    var sz_op : Int
+    if (!expr.residue[0].isLetter())
+        sz_op = 1
+    else
+        sz_op = length_name(expr.residue)
+
+    val op = expr.residue.substring(0, sz_op)
+
+    expr.precedence = precedence(op)
+    expr.operator = op;
+
+    if (expr.operator == "!")
+        expr.op_is_monadic = true
+
+    shift_expr(expr, sz_op)
 }
 
 fun read_number(expr : Expr) : Double {
 
-    val regex = "\\d+(\\.\\d+)?".toRegex()
+    val regex = "^\\d+(\\.\\d+)?".toRegex()
 
     val match = regex.find(expr.residue)
 
@@ -94,22 +127,28 @@ fun read_number(expr : Expr) : Double {
     throw_show_residue(expr, "Expected number")
 }
 
+fun length_name(s : String) : Int {
+    val regex = "^[a-z][a-z0-9_]*".toRegex(RegexOption.IGNORE_CASE)
+    return regex.find(s)?.value?.length ?: 0
+}
+
 fun get_value(expr : Expr, prev_precedence : Int) : Double {
+
+    if (expr.residue.isEmpty())
+        throw_show_residue(expr, "Fail")
 
     var result : Double
 
-    if (expr.residue[0] == '(') {
+    if (expr.residue[0] != '(')
+        result = read_number(expr)
+
+    else {
         shift_expr(expr, 1)
         result = get_value(expr, 0)
 
         if (!expr.has_operator || expr.operator != ")")
             throw_show_residue(expr, "Expected brace")
-
-    } else {
-        result = read_number(expr)
     }
-
-    expr.has_operator = false;
 
     return recu_eval_expr(result, expr, prev_precedence)
 }
@@ -127,17 +166,25 @@ fun recu_eval_expr(first : Double, expr : Expr, prev_precedence: Int) : Double {
 
     val operator = expr.operator
     val precedence = expr.precedence
+    val reverse = expr.reverse_order
+    expr.has_operator = false;
 
-    val second : Double = get_value(expr, precedence)
+    var subresult : Double
 
-    val subresult = calculate(first, operator, second)
+    if (expr.op_is_monadic)
+        subresult = calculate_monadic(first, operator)
+
+    else {
+        val second: Double = get_value(expr, precedence)
+        subresult = calculate_dyadic(first, operator, second, reverse)
+    }
 
     return recu_eval_expr(subresult, expr, prev_precedence)
 }
 
 fun eval_expr(string_expr : String) : Double {
 
-    var expr = Expr(false, "", 0, string_expr, string_expr)
+    var expr = Expr(string_expr)
 
     val result = get_value(expr, 0)
 
@@ -152,49 +199,5 @@ fun eval_expr_throw(string_expr : String) : String {
         eval_expr(string_expr).toString()
     } catch (e : Exception) {
         e.message.toString()
-    }
-}
-
-class MainActivity : AppCompatActivity() {
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
-        var hist = findViewById<TextView>(R.id.textHistory)
-        hist.movementMethod = ScrollingMovementMethod()
-
-        var ed = findViewById<EditText>(R.id.editExpr)
-        ed.setOnKeyListener(View.OnKeyListener {
-            v, keyCode, event ->
-            if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_UP) {
-                make_calc(v)
-                return@OnKeyListener true
-            }
-            false
-        })
-    }
-
-    fun make_clear(v : View) {
-        var ed = findViewById<EditText>(R.id.editExpr)
-        ed.text.clear()
-    }
-
-    fun make_calc(v : View) {
-
-        var ed = findViewById<EditText>(R.id.editExpr)
-        val expr = ed.text.toString()
-        if (expr.isEmpty())
-            return
-
-        var hist = findViewById<TextView>(R.id.textHistory)
-
-        if (!hist.text.isEmpty())
-            hist.append("\n")
-
-        val result = eval_expr_throw(expr)
-
-        hist.append(ed.text)
-        hist.append("\n====> $result")
     }
 }

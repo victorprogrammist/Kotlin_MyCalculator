@@ -1,5 +1,5 @@
 
-package com.example.MyCalculator
+package com.iss7gli7.MyCalculator
 
 // https://rosettacode.org/wiki/Gamma_function#Kotlin
 fun gammaLanczos(x: Double): Double {

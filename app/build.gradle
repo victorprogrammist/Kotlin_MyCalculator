@@ -12,11 +12,11 @@ android {
             keyPassword '--q137-1za'
         }
     }
-    compileSdkVersion 29
+    compileSdkVersion 28
     buildToolsVersion '30.0.3'
 
     defaultConfig {
-        applicationId "com.example.MyCalculator"
+        applicationId "com.iss7gli7.MyCalculator"
         minSdkVersion 16
         targetSdkVersion 30
         versionCode 1

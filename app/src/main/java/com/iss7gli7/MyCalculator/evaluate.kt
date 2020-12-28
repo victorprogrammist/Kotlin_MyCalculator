@@ -1,30 +1,33 @@
 
-package com.example.MyCalculator
+package com.iss7gli7.MyCalculator
 
 @Throws(Exception::class)
-fun precedence(op : String) : Int {
+fun precedence(op : String) : Pair<Int,Int> {
+    // result - (precedence, count params)
     when (op) {
-        ")" -> return -1
-        "+" -> return 1
-        "-" -> return 1
-        "*" -> return 2
-        "/" -> return 2
-        "%" -> return 2
-        "^" -> return 3
-        "log" -> return 3
-        "!" -> return 4
+        ")" -> return -2 to 0
+        "=" -> return 0 to 1
+        "+" -> return 1 to 2
+        "-" -> return 1 to 2
+        "*" -> return 2 to 2
+        "/" -> return 2 to 2
+        "%" -> return 2 to 2
+        "^" -> return 3 to 2
+        "log" -> return 3 to 2
+        "!" -> return 4 to 1
     }
-    throw Exception("Invalid operator: $op")
+    throw Exception("Inv. operator: $op")
 }
 
 @Throws(Exception::class)
 fun calculate_monadic(v1 : Double, op : String) : Double {
 
     when (op) {
+        "=" -> return v1
         "!" -> return gammaLanczos(v1 + 1.0)
     }
 
-    throw Exception("Invalid operator: $op")
+    throw Exception("Inv. operator: $op")
 }
 
 @Throws(Exception::class)
@@ -43,7 +46,7 @@ fun calculate_dyadic(v1 : Double, op : String, v2 : Double, reverse_order: Boole
         "^" -> return Math.pow(v1, v2)
     }
 
-    throw Exception("Invalid operator: $op")
+    throw Exception("Inv. operator: $op")
 }
 
 //**************************************************************
@@ -52,7 +55,7 @@ data class Expr (
     var has_operator : Boolean = false,
     var operator : String = "",
     var precedence : Int = 0,
-    var op_is_monadic : Boolean = false,
+    var count_params : Int = 0,
     var reverse_order : Boolean = false,
     var residue : String = expression
 )
@@ -76,6 +79,15 @@ fun shift_expr(expr : Expr, cnt : Int) : String {
     return res
 }
 
+fun shift_if(expr : Expr, tmpl : String) : Boolean {
+
+    if (!expr.residue.startsWith(tmpl, true))
+        return false
+
+    shift_expr(expr, tmpl.length)
+    return true
+}
+
 fun read_operator(expr : Expr) {
 
     if (expr.has_operator)
@@ -83,7 +95,7 @@ fun read_operator(expr : Expr) {
 
     expr.has_operator = true
     expr.reverse_order = false
-    expr.op_is_monadic = false
+    expr.count_params = 0
 
     if (expr.residue.isEmpty()) {
         expr.operator = "EOE"
@@ -91,12 +103,11 @@ fun read_operator(expr : Expr) {
         return
     }
 
-    if (expr.residue[0] == '\'') {
+    if (shift_if(expr, "\'"))
         expr.reverse_order = true
-        shift_expr(expr, 1)
-        if (expr.residue.isEmpty())
-            throw_show_residue(expr, "Syntax")
-    }
+
+    if (expr.residue.isEmpty())
+        throw_show_residue(expr, "Syntax")
 
     var sz_op : Int
     if (!expr.residue[0].isLetter())
@@ -106,11 +117,10 @@ fun read_operator(expr : Expr) {
 
     val op = expr.residue.substring(0, sz_op)
 
-    expr.precedence = precedence(op)
-    expr.operator = op;
-
-    if (expr.operator == "!")
-        expr.op_is_monadic = true
+    val(prec,cnt) = precedence(op)
+    expr.precedence = prec
+    expr.count_params = cnt
+    expr.operator = op
 
     shift_expr(expr, sz_op)
 }
@@ -139,11 +149,10 @@ fun get_value(expr : Expr, prev_precedence : Int) : Double {
 
     var result : Double
 
-    if (expr.residue[0] != '(')
+    if (!shift_if(expr, "("))
         result = read_number(expr)
 
     else {
-        shift_expr(expr, 1)
         result = get_value(expr, 0)
 
         if (!expr.has_operator || expr.operator != ")")
@@ -171,7 +180,7 @@ fun recu_eval_expr(first : Double, expr : Expr, prev_precedence: Int) : Double {
 
     var subresult : Double
 
-    if (expr.op_is_monadic)
+    if (expr.count_params == 1)
         subresult = calculate_monadic(first, operator)
 
     else {
@@ -186,10 +195,10 @@ fun eval_expr(string_expr : String) : Double {
 
     var expr = Expr(string_expr)
 
-    val result = get_value(expr, 0)
+    val result = get_value(expr, -1)
 
     if (expr.residue.isNotEmpty())
-        throw_show_residue(expr, "Invalid expression")
+        throw_show_residue(expr, "Inv. expr.")
 
     return result
 }

@@ -1,4 +1,4 @@
-package com.example.MyCalculator
+package com.iss7gli7.MyCalculator
 
 import android.content.Intent
 import android.os.Bundle
@@ -21,6 +21,8 @@ class SecondActivity : AppCompatActivity() {
 
     fun sendBack(v : View) {
         val intent = Intent(this, MainActivity::class.java)
+        intent.putExtra("expr", getIntent().getStringExtra("expr"))
+        intent.putExtra("hist", getIntent().getStringExtra("hist"))
         startActivity(intent)
     }
 }

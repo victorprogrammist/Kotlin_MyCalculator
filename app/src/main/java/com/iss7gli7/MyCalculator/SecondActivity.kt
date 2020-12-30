@@ -5,10 +5,12 @@ import android.os.Bundle
 import android.text.method.ScrollingMovementMethod
 import android.view.View
 import android.view.Window
+import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 
 class SecondActivity : AppCompatActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -17,13 +19,9 @@ class SecondActivity : AppCompatActivity() {
 
         var hlp = findViewById<TextView>(R.id.viewHelp)
         hlp.movementMethod = ScrollingMovementMethod()
-    }
 
-    fun sendBack(v : View) {
-        val intent = Intent(this, MainActivity::class.java)
-        intent.putExtra("expr", getIntent().getStringExtra("expr"))
-        intent.putExtra("hist", getIntent().getStringExtra("hist"))
-        startActivity(intent)
+        val btbk = findViewById<Button>(R.id.buttonBack)
+        btbk.setOnClickListener { onBackPressed() }
     }
 }
 

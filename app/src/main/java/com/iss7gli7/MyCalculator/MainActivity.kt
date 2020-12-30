@@ -12,9 +12,9 @@ import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
 
+    var last_expr : String = ""
     lateinit var v_expr : EditText
     lateinit var v_hist : TextView
-    var last_expr : String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -39,22 +39,13 @@ class MainActivity : AppCompatActivity() {
             }
             false
         })
-
-        val intent = getIntent()
-        if (intent != null) {
-            v_expr.setText(intent.getStringExtra("expr"))
-            v_hist.setText(intent.getStringExtra("hist"))
-        }
     }
 
-    fun make_help(v : View) {
-        val intent = Intent(this, SecondActivity::class.java)
-        intent.putExtra("expr", v_expr.text.toString())
-        intent.putExtra("hist", v_hist.text.toString())
-        startActivity(intent)
-    }
+    fun make_help(v : View) =
+        startActivity(Intent(this, SecondActivity::class.java))
 
-    fun make_clear(v : View) = v_expr.text.clear()
+    fun make_clear(v : View) =
+            v_expr.text.clear()
 
     fun make_calc(v : View) {
 
@@ -64,9 +55,11 @@ class MainActivity : AppCompatActivity() {
 
         last_expr = expr
 
+        val res = eval_expr_throw(expr)
+
         if (!v_hist.text.isEmpty())
             v_hist.append("\n")
 
-        v_hist.append("$expr\n====> ${eval_expr_throw(expr)}")
+        v_hist.append("$expr\n====> $res")
     }
 }

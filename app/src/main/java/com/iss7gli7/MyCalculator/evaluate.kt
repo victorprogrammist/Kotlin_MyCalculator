@@ -16,7 +16,8 @@ fun precedence(op : String) : Pair<Int,Int> {
         "log" -> return 3 to 2
         "!" -> return 4 to 1
     }
-    throw Exception("Inv. operator: $op")
+
+    throw_err()
 }
 
 @Throws(Exception::class)
@@ -27,7 +28,7 @@ fun calculate_monadic(v1 : Double, op : String) : Double {
         "!" -> return gammaLanczos(v1 + 1.0)
     }
 
-    throw Exception("Inv. operator: $op")
+    throw_err()
 }
 
 @Throws(Exception::class)
@@ -46,33 +47,27 @@ fun calculate_dyadic(v1 : Double, op : String, v2 : Double, reverse_order: Boole
         "^" -> return Math.pow(v1, v2)
     }
 
-    throw Exception("Inv. operator: $op")
+    throw_err()
+}
+
+fun throw_err() : Nothing {
+    throw Exception("Err")
 }
 
 //**************************************************************
 data class Expr (
-    val expression : String,
+    var residue : String,
     var has_operator : Boolean = false,
     var operator : String = "",
     var precedence : Int = 0,
     var count_params : Int = 0,
     var reverse_order : Boolean = false,
-    var residue : String = expression
 )
-
-fun throw_show_residue(expr : Expr, msg : String) : Nothing {
-
-    val sz_before = expr.expression.length - expr.residue.length
-
-    val before = expr.expression.substring(0, sz_before)
-
-    throw Exception("$msg: $before<?>${expr.residue}")
-}
 
 fun shift_expr(expr : Expr, cnt : Int) : String {
 
     if (expr.residue.length < cnt)
-        throw_show_residue(expr, "Invalid shift: (cnt: $cnt)")
+        throw Exception("Invalid shift: (cnt: $cnt)")
 
     val res = expr.residue.substring(0, cnt)
     expr.residue = expr.residue.substring(cnt).trimStart()
@@ -107,7 +102,7 @@ fun read_operator(expr : Expr) {
         expr.reverse_order = true
 
     if (expr.residue.isEmpty())
-        throw_show_residue(expr, "Syntax")
+        throw_err()
 
     var sz_op : Int
     if (!expr.residue[0].isLetter())
@@ -134,7 +129,7 @@ fun read_number(expr : Expr) : Double {
     if (match != null)
         return shift_expr(expr, match.value.length).toDouble()
 
-    throw_show_residue(expr, "Expected number")
+    throw_err()
 }
 
 fun length_name(s : String) : Int {
@@ -145,7 +140,7 @@ fun length_name(s : String) : Int {
 fun get_value(expr : Expr, prev_precedence : Int) : Double {
 
     if (expr.residue.isEmpty())
-        throw_show_residue(expr, "Fail")
+        throw_err()
 
     var result : Double
 
@@ -156,7 +151,7 @@ fun get_value(expr : Expr, prev_precedence : Int) : Double {
         result = get_value(expr, 0)
 
         if (!expr.has_operator || expr.operator != ")")
-            throw_show_residue(expr, "Expected brace")
+            throw_err()
     }
 
     return recu_eval_expr(result, expr, prev_precedence)
@@ -195,18 +190,45 @@ fun eval_expr(string_expr : String) : Double {
 
     var expr = Expr(string_expr)
 
-    val result = get_value(expr, -1)
+    try {
+        val result = get_value(expr, -1)
 
-    if (expr.residue.isNotEmpty())
-        throw_show_residue(expr, "Inv. expr.")
+        if (expr.residue.isNotEmpty())
+            throw Exception("Err")
 
-    return result
+        return result
+
+    } catch (e : Exception) {
+
+        val sz_before = string_expr.length - expr.residue.length
+        val before = string_expr.substring(0, sz_before)
+
+        val msg = e.message.toString()
+        throw Exception("$msg: $before<?>${expr.residue}")
+    }
 }
 
 fun eval_expr_throw(string_expr : String) : String {
-    return try {
-        eval_expr(string_expr).toString()
+
+    var res : String
+
+    try {
+        res = eval_expr(string_expr).toString()
     } catch (e : Exception) {
-        e.message.toString()
+        return e.message.toString()
     }
+
+    fun cut_last(s : String) : String = s.substring(0, s.length-1)
+
+    fun cut_last(s : String, c : Char) : String {
+        return if (s.isNotEmpty() && s.last() == c)
+            cut_last(cut_last(s), c)
+        else
+            s
+    }
+
+    if (res.contains('.'))
+        res = cut_last(res, '0')
+
+    return cut_last(res, '.')
 }

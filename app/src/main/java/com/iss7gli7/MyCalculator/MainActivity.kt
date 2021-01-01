@@ -1,34 +1,51 @@
 package com.iss7gli7.MyCalculator
 
 import android.content.Intent
+import android.graphics.*
 import android.os.Bundle
-import android.text.method.ScrollingMovementMethod
-import android.view.KeyEvent
-import android.view.View
-import android.view.Window
+import android.view.*
 import android.widget.EditText
-import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 
 class MainActivity : AppCompatActivity() {
 
-    var last_expr : String = ""
-    lateinit var v_expr : EditText
-    lateinit var v_hist : TextView
+    private lateinit var v_expr : EditText
+    private lateinit var v_hist : RecyclerView
+    private lateinit var adapt : MyAdapter
+    private lateinit var itemTouchHeler : ItemTouchHelper
+
+    fun initListHistory() {
+
+        adapt = object : MyAdapter() {
+            override fun OnTouch(v : View) {
+                v_expr.setText(dataExpr(v_hist.getChildAdapterPosition(v)))
+            }
+        }
+
+        v_hist = findViewById(R.id.listHistory)
+        v_hist.adapter = adapt
+        v_hist.layoutManager = LinearLayoutManager(applicationContext)
+
+        val touch = object : MySwipeToDelete(this) {
+            override fun onSwiped(vh : RecyclerView.ViewHolder) {
+                adapt.delItem(vh.adapterPosition)
+            }
+        }
+
+        itemTouchHeler = ItemTouchHelper(touch)
+        itemTouchHeler.attachToRecyclerView(v_hist)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         supportActionBar?.hide()
-
-//        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-//                WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
         setContentView(R.layout.activity_main)
 
-        v_hist = findViewById<TextView>(R.id.textHistory)
-        v_hist.movementMethod = ScrollingMovementMethod()
+        initListHistory()
 
         v_expr = findViewById<EditText>(R.id.editExpr)
         v_expr.setOnKeyListener(View.OnKeyListener {
@@ -50,16 +67,10 @@ class MainActivity : AppCompatActivity() {
     fun make_calc(v : View) {
 
         val expr = v_expr.text.toString().trim()
-        if (expr.isEmpty() || expr == last_expr)
+        if (expr.isEmpty() || expr == adapt.lastExpr())
             return
 
-        last_expr = expr
-
-        val res = eval_expr_throw(expr)
-
-        if (!v_hist.text.isEmpty())
-            v_hist.append("\n")
-
-        v_hist.append("$expr\n====> $res")
+        val pos = adapt.addItem(expr, eval_expr_throw(expr))
+        v_hist.layoutManager?.scrollToPosition(pos)
     }
 }

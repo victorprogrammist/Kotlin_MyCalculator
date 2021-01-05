@@ -11,14 +11,6 @@ abstract class MyAdapter : RecyclerView.Adapter<MyAdapter.ViewHolder>() {
 
     private val listData : ArrayList<Pair<String,String>> = arrayListOf()
 
-    abstract fun OnTouch(v : View)
-
-    val lstnr = object : View.OnClickListener {
-        override fun onClick(v: View?) {
-            OnTouch( v ?: return )
-        }
-    }
-
     fun dataExpr(pos : Int): String = listData[pos].first
     fun dataResult(pos : Int) : String = listData[pos].second
 
@@ -32,6 +24,14 @@ abstract class MyAdapter : RecyclerView.Adapter<MyAdapter.ViewHolder>() {
     class ViewHolder(v : View) : RecyclerView.ViewHolder(v) {
         val textExpr : TextView = v.findViewById(R.id.textExpression)
         val textResult : TextView = v.findViewById(R.id.textResult)
+    }
+
+    abstract fun OnTouch(v : View)
+
+    val lstnr = object : View.OnClickListener {
+        override fun onClick(v: View?) {
+            OnTouch( v ?: return )
+        }
     }
 
     override fun onCreateViewHolder(vg : ViewGroup, _viewType : Int) : ViewHolder {

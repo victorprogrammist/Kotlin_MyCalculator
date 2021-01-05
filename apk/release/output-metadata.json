@@ -11,8 +11,8 @@
       "type": "SINGLE",
       "filters": [],
       "versionCode": 1,
-      "versionName": "1.0",
-      "outputFile": "app-release.apk"
+      "versionName": "0.003.5",
+      "outputFile": "MyCalculator-0.003.5.apk"
     }
   ]
 }
